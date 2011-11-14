@@ -212,7 +212,6 @@ for iter = iterVect
             ptsList((numel(classes)+1):end) = setdiff(1:length(ptsList), ptsList(1:numel(classes)));
             
         case {'EQB_LDA','EQB_SVM'}
-            %entropy = zeros(size(predMatrix,1),1);
             %fprintf('  estimating entropies ...\n')
             % Estimate entropy
             CT = hist(predMatrix',classes) ./ perm;
