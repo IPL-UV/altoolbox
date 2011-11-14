@@ -332,6 +332,7 @@ void the_main(int argc, char **argv)
     }
 
 
+  /*
   // Let's save the constants b, the alphas and the support vectors (in training mode)
 
   //FILE * out1;
@@ -360,6 +361,7 @@ void the_main(int argc, char **argv)
 	    fclose(out2);
 	//  fclose(out3);
 	}
+	*/
 
   }
 
