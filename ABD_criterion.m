@@ -3,7 +3,7 @@ function [batch,cand] = ABD_criterion_opt(s_pts, pts2add, options)
 % function [batch,cand] = ABD_criterion_opt(s_pts, pts2add, options)
 %
 % Computes the ABD (angle based diversity) criterion using the input batch of
-% candidates
+% candidates [criterion proposed by Demir et al., IEEE TGRS, 2011]
 %
 %  Inputs:
 %    s_pts:   matrix where the first columns are the samples, and the two last
@@ -17,6 +17,15 @@ function [batch,cand] = ABD_criterion_opt(s_pts, pts2add, options)
 %    batch: the indexes of the selected candidates (taken from last column of
 %           s_pts)
 %    cand:  the indexes of the remaining candidates
+%
+%
+% Thank you for using the toolbox!
+%
+% Please cite : 
+% D. Tuia, M. Volpi, L. Copa, M. Kanevski, and J. Muñoz-Marí.
+% A survey of active learning algorithms for supervised remote sensing image classification. 
+% IEEE Journal of Selected Topics in Signal Processing, 5(3):606?617, 2011.
+
 
 lambda = 0.6;
 batch  = 1;
