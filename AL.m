@@ -7,12 +7,15 @@
 %           - trnPool: candidates
 %           - tstSet: testSet for error computation
 %           - iterVect: vector with iterations (samples to test)
-%           - pts2add: number of pts to add at each iteration
+%                       ex: 10:20:90, adds 20 samples 5 times.
+%           - pts2add: vector with number of pts to add at each iteration
+%                       ex: 20*ones(1,5), adds 20 samples 5 times.
 %           - num_of_classes: number of classes
 %           - EQB parameters:
-%             - pct: percentage of subtraining sets
-%             - perm: permutations (subsets) to try
-%             - nEQB: 0: ---- / 1: ----
+%             - pct: percentage of training samples in weak classifiers
+%             - perm: number of weak classifiers
+%             - nEQB:   - 0: without normalization [Tuia et al., TGRS, 2009] 
+%                       - 1: with normalization [Copa et al, SPIE, 2010]
 %
 % outputs:  - tstErr: errors over test set (iter x 1)
 %           - predictions: test set predictions
@@ -25,7 +28,15 @@
 %   - 'MMD': minimal mean distances between [-1,+1]
 %   - 'MCLU_OPC': MCLU selecting exactly one sample per class (using predictions)
 %
-% by Devis Tuia (2007), JoRdI (2011)
+% by Devis Tuia (2007-2011), JoRdI (2011)
+%
+% Thank you for using the toolbox!
+%
+% Please cite : 
+% D. Tuia, M. Volpi, L. Copa, M. Kanevski, and J. Muñoz-Marí.
+% A survey of active learning algorithms for supervised remote sensing image classification. 
+% IEEE Journal of Selected Topics in Signal Processing, 5(3):606?617, 2011.
+
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -48,8 +59,8 @@ if ~strcmpi(method,'EQB_LDA')
     dlmwrite([rundir '/tst.txt'], tstSet, 'delimiter', ' ', '-append');
     % SVM training parameters
     nfolds = 3;
-    sigmas = logspace(-1,2,7);
-    Cs = logspace(0,3,7);
+    sigmas = logspace(-2,1,5);
+    Cs = logspace(0,2,5);
 end
 
 % Results
@@ -64,8 +75,8 @@ for iter = iterVect
     if strcmpi(method,'EQB_LDA')
         labels = classify(tstSet(:,1:end-1),trnSet(:,1:end-1),trnSet(:,end));
     else
-        % refait le grid search toutes les 10 iterations
-        if iter == 10 || iter == 100 % || iter == 1000
+        % repeats grid search at iterations 1, 10
+        if  ptsidx == 1 || ptsidx == 11
             [stdzFin, costFin] = GridSearch_Train_CV(trnSet,num_of_classes,sigmas,Cs,nfolds,rundir);
         end
 

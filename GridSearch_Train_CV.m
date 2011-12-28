@@ -1,3 +1,15 @@
+% Crossvalidation error for SVM parameters selection
+% by Michele VOlpi, University of Lausanne, 2010.
+%
+% Thank you for using the toolbox!
+%
+% Please cite : 
+% D. Tuia, M. Volpi, L. Copa, M. Kanevski, and J. Muñoz-Marí.
+% A survey of active learning algorithms for supervised remote sensing image classification. 
+% IEEE Journal of Selected Topics in Signal Processing, 5(3):606?617, 2011.
+
+%
+
 function [stdzFin, costFin, tab] = GridSearch_Train_CV(trainInput,ncl,sigma,cost,N,rundir)
 
 % SVM automatic trainer
