@@ -1,6 +1,6 @@
-function [batch,cand] = ABD_criterion_opt(s_pts, pts2add, options)
+function [batch,cand] = ABD_criterion(s_pts, pts2add, options)
 
-% function [batch,cand] = ABD_criterion_opt(s_pts, pts2add, options)
+% function [batch,cand] = ABD_criterion(s_pts, pts2add, options)
 %
 % Computes the ABD (angle based diversity) criterion using the input batch of
 % candidates
@@ -23,10 +23,10 @@ batch  = 1;
 cand   = 2:size(s_pts,1);
 
 switch options.kern
-    
+
     case 'rbf'
         K = kernelmatrix(options.kern, s_pts(:,1:end-2)', s_pts(:,1:end-2)', options.sigma);
-        
+
     otherwise
         error('Only RBF kernel is supported right now')
         % FIXME: we need another option to pass the parameter for each kernel
@@ -39,22 +39,22 @@ switch options.kern
 end
 
 for i = 1:pts2add-1
-    
+
     kk = K(batch,cand);
     if size(kk,1) == 1
         massimo = max(kk,1);
     else
         massimo = max(kk);
     end
-    
+
     heuristic = lambda * s_pts(cand,end)' + (1-lambda) * massimo;
     [val idx] = sort(heuristic);
-    
+
     % Add to batch
     batch = [batch ; cand(idx(1))];
     % Remove from candidates
     cand(idx(1)) = [];
-    
+
 end
 
 % Return batch and remaining candidates

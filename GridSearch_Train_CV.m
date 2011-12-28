@@ -22,18 +22,18 @@ for c = cost
                     rundir, rundir, ncl, c, s*sqrt(2), rundir);
         for k = 1:N
             [xapp,yapp,xtest,ytest] = n_fold(x,y,N,k);
-            
+
             trainCV = [xapp yapp];
             valCV = [xtest ytest];
-            
+
             enteteTrn = [size(trainCV,1) size(trainCV,2)];
-            dlmwrite([rundir '/trnSet_init.txt'], enteteTrn, ' ');
+            dlmwrite([rundir '/trnSet_init.txt'], enteteTrn, 'delimiter', ' ', 'precision', 8);
             dlmwrite([rundir '/trnSet_init.txt'], trainCV, 'delimiter', ' ', '-append');
-            
+
             enteteVal = [size(valCV,1) size(valCV,2)];
-            dlmwrite([rundir '/valSet.txt'], enteteVal, ' ');
+            dlmwrite([rundir '/valSet.txt'], enteteVal, 'delimiter', ' ', 'precision', 8);
             dlmwrite([rundir '/valSet.txt'], valCV, 'delimiter', ' ', '-append');
-            
+
             [status,result] = system(cmdtrn);
             if status ~= 0
                 disp(result)
@@ -44,7 +44,7 @@ for c = cost
                 disp(result)
                 error('ALToolbox:GridSearch_Train_CV:multisvm','Error running multisvm')
             end
-            
+
             %err = textread([rundir '/the_class_err.dat']);
             str = regexp(result,'# ([\.\d]+)%','tokens');
             tabCV(k,1) = str2double(str{1});

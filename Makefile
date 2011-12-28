@@ -1,6 +1,13 @@
+TORCH=../Torch3
 CXX=c++
-CFLAGS=-Wall -I../Torch3/core -I../Torch3/kernels
-LIBS=-L../Torch3/lib/Darwin_OPT_FLOAT -l torch
+CXXFLAGS=-Wall -I$(TORCH)/core -I$(TORCH)/kernels -g
+
+ifeq ($(shell uname),Linux)
+	LIBS=-L$(TORCH)/lib/Linux_OPT_FLOAT
+else
+	LIBS=-L$(TORCH)/lib/Darwin_OPT_FLOAT
+endif
 
 multisvm: multisvm.cpp
-	$(CXX) $(CFLAGS) $(LIBS) -o $@ $<
+	$(CXX) $(CXXFLAGS) $(LIBS) -o $@ $<  -l torch
+
