@@ -1,18 +1,11 @@
+function [modelParameters tab] = GridSearch_Train_CV(trainInput,ncl,sigma,cost,N,rundir)
+
+% function [modelParameters tab] = GridSearch_Train_CV(trainInput,ncl,sigma,cost,N,rundir)
+%
 % Crossvalidation error for SVM parameters selection
 % by Michele VOlpi, University of Lausanne, 2010.
 %
-% Thank you for using the toolbox!
-%
-% Please cite : 
-% D. Tuia, M. Volpi, L. Copa, M. Kanevski, and J. Mu{\~n}oz-Mar{\'i}.
-% A survey of active learning algorithms for supervised remote sensing image classification. 
-% IEEE Journal of Selected Topics in Signal Processing, 5(3):606?617, 2011.
-
-function [stdzFin, costFin, tab] = GridSearch_Train_CV(trainInput,ncl,sigma,cost,N,rundir)
-
-% SVM automatic trainer
-%
-% function [stdzFin, costFin, tab] = GridSearch_Train_CV(trainInput,ncl,sigma,cost,N,rundir)
+% See also ALToolbox
 
 [s1,s2] = size(trainInput);
 shake = randperm(s1)';
@@ -78,5 +71,5 @@ bst = tab(a(size(a,1)),:);
 % disp(bst)
 fprintf('  %5.2f %5.2f %5.2f\n', bst)
 
-stdzFin = tab(a(size(a,1)),1);
-costFin = tab(a(size(a,1)),2);
+modelParameters.stdzFin = tab(a(size(a,1)),1);
+modelParameters.costFin = tab(a(size(a,1)),2);

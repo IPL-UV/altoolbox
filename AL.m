@@ -1,4 +1,4 @@
-function [tstErr, predictions, stdzFin, costFin, ptsList, criterion] = ...
+function [tstErr, predictions, modelParams, criterion] = ...
     AL(method, trnSet, trnPool, tstSet, iterVect, num_of_classes, pct, perm, nEQB)
 
 % Active Learning
@@ -18,7 +18,7 @@ function [tstErr, predictions, stdzFin, costFin, ptsList, criterion] = ...
 %
 % outputs:  - tstErr: errors over test set (iter x 1)
 %           - predictions: test set predictions
-%           - stdzFin costFin : kernel parameters
+%           - modelParams: SVM hyper-parameters
 %           - ptsList: list of samples selected by the AL method
 %           - criterion: criterion followed by the AL method to select the samples
 %
@@ -66,10 +66,10 @@ for ptsidx = 1:length(iterVect)
     else
         % Repeats grid search at iterations 1, 10
         if  ptsidx == 1 || ptsidx == 11
-            [stdzFin, costFin] = GridSearch_Train_CV(trnSet,num_of_classes,sigmas,Cs,nfolds,rundir);
+            modelParams = GridSearch_Train_CV(trnSet,num_of_classes,sigmas,Cs,nfolds,rundir);
         end
         % Training
-        ALtrain(trnSet, costFin, stdzFin, num_of_classes, modelname, rundir);
+        ALtrain(trnSet, modelParams, num_of_classes, modelname, rundir);
     end
     
     % Predictions on test set
@@ -113,7 +113,7 @@ for ptsidx = 1:length(iterVect)
             
             % SVM training of i-th SVM
             if ~strcmpi(method,'EQB_LDA')
-                ALtrain(shuffledTrnSet, costFin, stdzFin, num_of_classes, modelname, rundir);
+                ALtrain(shuffledTrnSet, modelParams, num_of_classes, modelname, rundir);
             end
             
             % Prediction
@@ -121,7 +121,7 @@ for ptsidx = 1:length(iterVect)
         end
         fprintf('\n')
             
-    else
+    elseif ~strcmpi(method, 'RS')
         % Prediction on trnPool
         [labels distances] = ALpredict(method, trnSet, trnPool, modelname, rundir);
     end
@@ -195,7 +195,7 @@ for ptsidx = 1:length(iterVect)
         cand = ptsList(1:min(samp2add*100,end),:);
         
         options.kern = 'rbf';
-        options.sigma = stdzFin;
+        options.sigma = modelParams.stdzFin;
         yes = ABD_criterion([trnPool(cand,:) cand], samp2add*10 , options);
         
         % Re-create ptsList using 'yes'

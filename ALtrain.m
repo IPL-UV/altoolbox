@@ -1,6 +1,6 @@
-function ALtrain(trnSet, costFin, stdzFin, num_of_classes, modelname, rundir)
+function ALtrain(trnSet, modelParameters, num_of_classes, modelname, rundir)
 
-% function ALtrain(trnSet, costFin, stdzFin, num_of_classes, modelname, rundir)
+% function ALtrain(trnSet, modelParameters, num_of_classes, modelname, rundir)
 %
 %  trnSet: training set
 %  costFin: SVM C parameter
@@ -17,7 +17,7 @@ dlmwrite([rundir '/TrnSetShuffled.txt'], trnSet, 'delimiter', ' ', '-append');
 
 % Entranement
 cmdtrn = sprintf('./multisvm %s/TrnSetShuffled.txt %s %d -c %f -std %f -dir %s', ...
-    rundir, modelname, num_of_classes, costFin, stdzFin * sqrt(2), rundir);
+    rundir, modelname, num_of_classes, modelParameters.costFin, modelParameters.stdzFin * sqrt(2), rundir);
 
 [status,result] = system(cmdtrn);
 if status ~= 0

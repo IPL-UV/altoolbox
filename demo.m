@@ -20,12 +20,24 @@ ts = [IM(c(8001:end),:) CL(c(8001:end),:)];
 iterVect = 10:10:200;
 
 % RS
-disp('SVM with random sampling');
-[tstErrRS, predictionsRS, stdzFinRS, costFinRS] = ...
-    AL('RS', tr, cand, ts, iterVect, num_of_classes);
+
+% disp('SVM with random sampling');
+% [tstErrRS, predictionsRS, modelParamsRS] = ...
+%     AL('RS', tr, cand, ts, iterVect, num_of_classes);
+
+
+options.model = 'SVM';
+options.uncertainty = 'random';
+options.iterVect = iterVect;
+
+[accCurve, predictions, criterion, sampList, modelParameters] = ...
+             ALcore(tr, cand, ts, num_of_classes, options);
+
+return
+
 % AL
 disp('SVM with margin sampling active learning');
-[tstErrAL, predictionsAL, stdzFinAL, costFinAL] = ...
+[tstErrAL, predictionsAL, modelParamsAL] = ...
     AL('MS', tr, cand, ts, iterVect, num_of_classes);
 
 figure
