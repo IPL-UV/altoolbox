@@ -14,18 +14,11 @@ function [batch,cand] = ABD_criterion(s_pts, pts2add, options)
 %    options: .kern: kernel type, .sigma: kernel free parameter
 %
 %  Outputs:
-%    batch: the indexes of the selected candidates (taken from last column of
-%           s_pts)
+%    batch: the indexes of the selected candidates (taken from last column of s_pts)
 %    cand:  the indexes of the remaining candidates
 %
 %
-% Thank you for using the toolbox!
-%
-% Please cite : 
-% D. Tuia, M. Volpi, L. Copa, M. Kanevski, and J. Muñoz-Marí.
-% A survey of active learning algorithms for supervised remote sensing image classification. 
-% IEEE Journal of Selected Topics in Signal Processing, 5(3):606?617, 2011.
-
+% See also ALToolbox
 
 lambda = 0.6;
 batch  = 1;
@@ -49,11 +42,11 @@ end
 
 for i = 1:pts2add-1
 
-    kk = K(batch,cand);
-    if size(kk,1) == 1
-        massimo = max(kk,1);
+    val = K(batch,cand);
+    if size(val,1) == 1
+        massimo = max(val,1);
     else
-        massimo = max(kk);
+        massimo = max(val);
     end
 
     heuristic = lambda * s_pts(cand,end)' + (1-lambda) * massimo;
@@ -68,4 +61,4 @@ end
 
 % Return batch and remaining candidates
 batch = s_pts(batch,end);
-cand = s_pts(cand,end);
+cand  = s_pts(cand,end);

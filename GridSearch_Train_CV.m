@@ -4,11 +4,9 @@
 % Thank you for using the toolbox!
 %
 % Please cite : 
-% D. Tuia, M. Volpi, L. Copa, M. Kanevski, and J. Muñoz-Marí.
+% D. Tuia, M. Volpi, L. Copa, M. Kanevski, and J. Mu{\~n}oz-Mar{\'i}.
 % A survey of active learning algorithms for supervised remote sensing image classification. 
 % IEEE Journal of Selected Topics in Signal Processing, 5(3):606?617, 2011.
-
-%
 
 function [stdzFin, costFin, tab] = GridSearch_Train_CV(trainInput,ncl,sigma,cost,N,rundir)
 
@@ -22,6 +20,8 @@ trainInput = sortrows([trainInput shake], s2+1);
 trainInput = trainInput(:,1:s2);
 x = trainInput(:,1:s2-1);
 y = trainInput(:,s2);
+
+fprintf('  Adjusting SVM parameters ...')
 
 iter = 1;
 % tab = zeros(size(unique(sigma),1)*size(unique(cost),1),N);
@@ -63,7 +63,7 @@ for c = cost
         end
 
         tab(iter,:) = [s c mean(tabCV)];
-        fprintf('------------------ %8.2f %8.2f %6.2f \n',tab(iter,:));
+        %fprintf('------------------ %8.2f %8.2f %6.2f \n',tab(iter,:));
         clear tabCV
         iter = iter + 1;
     end
@@ -75,7 +75,8 @@ bst = tab(a(size(a,1)),:);
 
 % disp(['Proposed:'])
 % disp(['s1 C error'])
-disp(bst)
+% disp(bst)
+fprintf('  %5.2f %5.2f %5.2f\n', bst)
 
 stdzFin = tab(a(size(a,1)),1);
 costFin = tab(a(size(a,1)),2);
