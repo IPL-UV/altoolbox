@@ -1,159 +1,225 @@
-function [tstErr, predictions, modelParams, criterion] = ...
-    AL(method, trnSet, trnPool, tstSet, iterVect, num_of_classes, pct, perm, nEQB)
+function [accCurve, predictions, criterion, sampList, modelParameters] = ...
+             AL(trnSet, cndSet, tstSet, num_of_classes, options)
 
-% Active Learning
+% function [accCurve, predictions, criterion, sampList, modelParameters] = ...
+%             ALcore(trnSet, cndSet, tstSet, num_of_classes, options)
 %
-% inputs:   - method: active learning method (see later)
-%           - trnSet: starting train set
-%           - trnPool: candidates
-%           - tstSet: testSet for error computation
-%           - iterVect: vector with samples to add at each iteration
-%                       ex: 10:20:90, 5 iterations adding 20 samples each
-%           - num_of_classes: number of classes
-%           - EQB parameters:
-%             - pct: percentage of training samples in weak classifiers
-%             - perm: number of weak classifiers
-%             - nEQB:   - 0: without normalization [Tuia et al., TGRS, 2009]
-%                       - 1: with normalization [Copa et al, SPIE, 2010]
+% Active Learning toolbox: core function
+% 
+% Inputs:
+%   - trnSet:         initial training points (ntr x dim + class)
+%   - cndSet:         set of samples (candidate) for ranking (ncand x dim + class)
+%   - num_of_classes: number of classes
+%   - tstSet:         test set (ntest x dim + class)
+%   - options:
+%            .uncertainty: 'Random', 'EQB', 'MS', 'MCLU', 'Multiview'
+%            .diversity:   'None', 'ABD', 'Manifold'
+%            .iterVector:  vector containing number of samples to add at each iteration
+%            .model:       base classifier, 'LDA', 'SVM'
+%            .pct:         for EQB, percentage of trainig pixels to make sub-trainig sets
+%            .numModels:   for EQB, number of models to train
+%            .normEQB:     - 0: without normalization [Tuia et al., TGRS, 2009]
+%                          - 1: with normalization [Copa et al, SPIE, 2010]
+%            .viewsVector: for Multiview, ex: [1 1 1 2 2 3] = 3 views with corresponding
+%                          variables
+%   - Notes:
+%     - MS and MCLU work only if 'SVM' chosen as classifier. If chosing 'LDA', we can use
+%       posterior probabilities instead of decision functions to 'simulate' the criteria,
+%       but it is a good idea to mix everything
+%     - Default options are: {'MS', 'None', 10, 'SVM', 0.6, 4, 1, [1 1 1 2 2 3]}
 %
-% outputs:  - tstErr: errors over test set (iter x 1)
-%           - predictions: test set predictions
-%           - modelParams: SVM hyper-parameters
-%           - ptsList: list of samples selected by the AL method
-%           - criterion: criterion followed by the AL method to select the samples
-%
-%           * note: ptsList and criterion are of the last iteration only!
-%
-% method can be:
-%   - 'RS': random sampling
-%   - 'MS' / 'MS_ABD': margin sampling (Schohn 2000) / MS with ABD criterion
-%   - 'MCLU' / 'MCLU_ABD': multiclass level uncertainty / MCLU + ABD
-%   - 'MMD': minimal mean distances between [-1,+1]
-%   - 'MCLU_OPC': MCLU selecting exactly one sample per class (using predictions)
-%
+% Outputs:
+% 
+%   - accCurve:        learning curve
+%   - predictions:     classification predictions in test for each instance of options.iterVect
+%   - criterion:       the uncertainty ranking of the candidate pixels, coming out of the
+% 	                   uncertainty function
+%   - sampList:        list of selected samples among the candidates
+%   - modelParameters: RBF Gaussian kernel sigma and const C if using SVM
+% 	
 % by Devis Tuia, JoRdI (2007-12)
 %
 % See also ALToolbox
 
-% LDA / SVM parameters
-rundir = sprintf('./run_%s', method);
-if strcmpi(method,'EQB_LDA')
-    modelname = '';
-    stdzFin = 0;
-    costFin = 0;
-else
-    if ~exist(rundir,'dir')
-        mkdir(rundir)
-    end
-    modelname = sprintf('%s/modelTestBoot_Schohn', rundir);    
-    % SVM training parameters
-    nfolds = 3;
-    sigmas = logspace(-2,1,5);
-    Cs = logspace(0,2,5);
+% Check parameters and set default options
+if ~exist('options','var')
+    options = struct();
+end
+if ~isfield(options, 'uncertainty')
+    options.uncertainty = 'MS';
+end
+if ~isfield(options, 'diversity')
+    options.diversity = 'None';
+end
+if ~isfield(options, 'iterVect')
+    options.iterVect = 10;
+end
+if ~isfield(options, 'model')
+    options.model = 'SVM';
+end
+if ~isfield(options, 'pct')
+    options.pct = 0.6;
+end
+if ~isfield(options, 'numModels')
+    options.numModels = 4;
+end
+if ~isfield(options, 'normEQB')
+    options.normEQB = 1;
+end
+if ~isfield(options, 'viewsVector')
+    options.viewsVector = [1 1 1 2 2 3];
 end
 
+rundir = sprintf('./run_%s_%s', options.model, options.uncertainty);
+modelname = '';
+modelParameters.stdzFin = 0;
+modelParameters.costFin = 0;
+
+switch options.model
+    case 'LDA'
+    case 'SVM'
+        if ~exist(rundir,'dir')
+            mkdir(rundir)
+        end
+        modelname = sprintf('%s/modelTestBoot_Schohn', rundir);    
+        % SVM training parameters
+        nfolds = 3;
+        sigmas = logspace(-2,1,5);
+        Cs = logspace(0,2,5);
+    otherwise
+        error(['Unknown or unimplemented base model: ' options.model])
+end
+
+switch upper(options.uncertainty)
+    case {'RANDOM', 'EQB'} %, 'MULTIVIEW'} not yet implemented
+    case {'MS', 'MCLU'}
+        if strcmpi(options.model, 'LDA')
+            error([options.uncertainty ' uncertainty does not work with ' options.model])
+        end
+    otherwise
+        error(['Unknown or unimplemented uncertainty: ' options.uncertainty])
+end
+
+switch upper(options.diversity)
+    case {'NONE', 'ABD'} %, 'Manifold'} not yet implemented
+    otherwise
+        error(['Unknown or unimplemented diversity: ' options.diversity])
+end
+    
 % Results
-tstErr = zeros(numel(iterVect),2);
-predictions = zeros(size(tstSet,1), numel(iterVect));
+accCurve = zeros(numel(options.iterVect),2);
+predictions = zeros(size(tstSet,1), numel(options.iterVect));
+criterion = cell(numel(options.iterVect)-1,1);
+
+% Reserve memory
+diffVect = diff(options.iterVect);
+sampList = zeros(1,sum(diffVect));
+
+% Vector with the indexes to fill sampList (this allows to fill it without using
+% sampList = [sampList ; <whatever>] 
+% idxVect  = [1 cumsumdiffVect];
+
+% Another way is to mantain an index of the vector current size
+sampSize = 0;
 
 % -----------------------------------------------------------------------------
-% Main loop: iterVect is essentially the number of samples to test
-for ptsidx = 1:length(iterVect)
+% Main loop: iterVect contains the number of samples to add at each iteration
+for ptsidx = 1:length(options.iterVect)
     
     % SVM training
-    if strcmpi(method,'EQB_LDA')
+    if strcmpi(options.model,'LDA')
         modelname = '';
     else
         % Repeats grid search at iterations 1, 10
-        if  ptsidx == 1 || ptsidx == 11
-            modelParams = GridSearch_Train_CV(trnSet,num_of_classes,sigmas,Cs,nfolds,rundir);
+        if  ptsidx == 1 || ptsidx == 10
+           modelParameters = GridSearch_Train_CV(trnSet,num_of_classes,sigmas,Cs,nfolds,rundir);
         end
         % Training
-        ALtrain(trnSet, modelParams, num_of_classes, modelname, rundir);
+        ALtrain(trnSet, modelParameters, num_of_classes, modelname, rundir);
     end
     
     % Predictions on test set
     %disp('  Testing ...')
     
     % Predict in blocks to handle deal with test sets
-    predictions(:,ptsidx) = ALpredict(method, trnSet, tstSet, modelname, rundir);
+    predictions(:,ptsidx) = ALpredict(options.model, trnSet, tstSet, modelname, rundir);
     
     % Classes in current training set
     classes = unique(trnSet(:,end));
     
     % compute test error and Kappa
     res = assessment(tstSet(:,end),predictions(:,ptsidx),'class');
-    tstErr(ptsidx,1) = res.OA;
-    tstErr(ptsidx,2) = res.Kappa;
+    accCurve(ptsidx,1) = res.OA;
+    accCurve(ptsidx,2) = res.Kappa;
     fprintf('    trSize = %4i, num. classes = %2i, OA = %5.2f %%\n', ...
                     size(trnSet,1), length(classes), res.OA);
     
     % Stop in last iteration
-    if ptsidx == length(iterVect)
+    if ptsidx == length(options.iterVect)
         break
     end
     
     
     %%%% Here begins the Active Selection algorithm
     
-    % 1. Obtain predictions on trnPool for ranking
+    % 1. Obtain predictions on cndSet for ranking
     
     disp('  Ranking ...')
     
-    if strcmpi(method, 'EQB_LDA') || strcmpi(method, 'EQB_SVM')
-        predMatrix = zeros(size(trnPool,1), perm);
+    if strcmpi(options.uncertainty, 'EQB')
+        predMatrix = zeros(size(cndSet,1), options.numModels);
         
         % Build predition matrix for EQB running different 'perm' permutations
-        fprintf('  perm ')
-        for i = 1:perm
+        fprintf('  EQB model ')
+        for i = 1:options.numModels
             fprintf(' %02d', i)
             % New training set
             c = randperm(size(trnSet,1))';
-            shuffledTrnSet = trnSet(c(1:ceil(pct*length(c))),:);
+            shuffledTrnSet = trnSet(c(1:ceil(options.pct*length(c))),:);
             
             % SVM training of i-th SVM
-            if ~strcmpi(method,'EQB_LDA')
-                ALtrain(shuffledTrnSet, modelParams, num_of_classes, modelname, rundir);
+            if strcmpi(options.model,'SVM')
+                ALtrain(shuffledTrnSet, modelParameters, num_of_classes, modelname, rundir);
             end
             
             % Prediction
-            predMatrix(:,i) = ALpredict(method, shuffledTrnSet, trnPool, modelname, rundir);
+            predMatrix(:,i) = ALpredict(options.model, shuffledTrnSet, cndSet, modelname, rundir);
         end
         fprintf('\n')
             
-    elseif ~strcmpi(method, 'RS')
-        % Prediction on trnPool
-        [labels distances] = ALpredict(method, trnSet, trnPool, modelname, rundir);
+    elseif ~strcmpi(options.uncertainty, 'random')
+        % Predictions on cndSet
+        [labels distances] = ALpredict(options.model, trnSet, cndSet, modelname, rundir);
     end
     
     
     % 2. Use one the following AL methods to rank the predictions
     
-    switch method
+    switch upper(options.uncertainty)
         
-        case 'RS' % Random sampling
-            ptsList = randperm(size(trnPool,1));
-            criterion = ones(size(trnPool,1),1);
+        case 'RANDOM' % Random sampling
+            ptsList = randperm(size(cndSet,1))';
+            criterion{ptsidx} = 1;
             
-        case {'MS','MS_ABD'} % Margin sampling
+        case 'MS' % Margin sampling
             yy = min(abs(distances),[],2);
             [val ptsList] = sortrows(yy);
-            criterion = yy;
+            criterion{ptsidx} = yy;
             
-        case {'MCLU','MCLU_ABD'} % Multiclass Level Uncertanty
+        case 'MCLU' % Multiclass Level Uncertanty
             distances = sort(distances,2);
             yy = distances(:,end) - distances(:,end-1);
             [val ptsList] = sortrows(yy);
-            criterion = yy;
+            criterion{ptsidx} = yy;
             
         case 'MMD' % Minimal mean distances between [-1,+1]
-            newdist = zeros(size(distances,1), 1);
+            yy = zeros(size(distances,1), 1);
             distances = abs(distances);
             for dd = 1:size(distances,1)
-                newdist(dd) = mean(distances( distances(dd,:) < 1 ));
+                yy(dd) = mean(distances( distances(dd,:) < 1 ));
             end
-            [val ptsList] = sortrows(newdist);
-            criterion = newdist;
+            [val ptsList] = sortrows(yy);
+            criterion{ptsidx} = yy;
             
         case 'MCLU_OPC' % MCLU selecting exactly one from each class (OPC)
             distances = sort(distances,2);
@@ -167,45 +233,53 @@ for ptsidx = 1:length(iterVect)
             end
             % Fill the rest of ptsList with the numbers not already in ptsList
             ptsList((numel(classes)+1):end) = setdiff(1:length(ptsList), ptsList(1:numel(classes)));
-            criterion = distances(:,end) - distances(:,end-1);
+            criterion{ptsidx} = distances(:,end) - distances(:,end-1);
             
-        case {'EQB_LDA','EQB_SVM'}
+        case 'EQB'
             %fprintf('  estimating entropies ...\n')
             % Estimate entropy
-            CT = hist(predMatrix',classes) ./ perm;
+            CT = hist(predMatrix',classes) ./ options.numModels;
             entropy = log10(CT);
             entropy(isinf(entropy)) = 0; % remote Inf's
             entropy = - sum(CT .* entropy);
-            % If nEQB ~= 0 compute normalized entropy
-            if nEQB
+            % If options.normEQB ~= 0 compute normalized entropy
+            if options.normEQB
                 CTcount = log(sum(CT > 0)); % log of non-zero elements
                 CTcount(CTcount == 0) = 1; % avoid divisons by zero
                 entropy = entropy ./ CTcount;
             end
             
             [val ptsList] = sort(-entropy);
-            criterion = -entropy;
+            criterion{ptsidx} = -entropy;
     end
     
     % Samples to add to training set
-    samp2add = iterVect(ptsidx+1) - iterVect(ptsidx);
+    samp2add = diffVect(ptsidx); % options.iterVect(ptsidx+1) - options.iterVect(ptsidx);
     
-    % ABD criterion for MS or MCLU
-    if strcmpi(method,'MS_ABD') || strcmpi(method,'MCLU_ABD')
-        cand = ptsList(1:min(samp2add*100,end),:);
-        
-        options.kern = 'rbf';
-        options.sigma = modelParams.stdzFin;
-        yes = ABD_criterion([trnPool(cand,:) cand], samp2add*10 , options);
-        
+    % ABD diversity criterion
+    if strcmpi(options.diversity,'ABD')
+        ABDcand = ptsList(1:min(samp2add*100,end));
+        if strcmpi(options.model, 'LDA')
+            ABDopts.kern = 'lin';
+            ABDopts.sigma = 0;
+        else
+            ABDopts.kern = 'rbf';
+            ABDopts.sigma = modelParameters.stdzFin;
+        end
+        yes = ABD_criterion([cndSet(ABDcand,:) ABDcand], samp2add*10 , ABDopts);
         % Re-create ptsList using 'yes'
         ptsList = [yes ; setdiff(ptsList,yes)];
     end
     
-    % Add selected points from ptsList to trnSet and remove them from trnPool
+    % Add selected points from ptsList to trnSet and remove them from cndSet
     ptsNoList = ptsList((samp2add+1):end);
     ptsList   = ptsList(1:samp2add);
-    trnSet    = [trnSet ; trnPool(ptsList,:)];
-    trnPool   = trnPool(ptsNoList,:);
+    trnSet    = [trnSet ; cndSet(ptsList,:)];
+    cndSet    = cndSet(ptsNoList,:);
+    
+    %sampList = [sampList ; ptsList];
+    %sampList(idxVect(ptsidx)+1:idxVect(ptsidx+1)) = ptsList;
+    sampList(sampSize+1:sampSize+length(ptsList)) = ptsList;
+    sampSize = sampSize + length(ptsList);
     
 end

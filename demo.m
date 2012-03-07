@@ -19,31 +19,35 @@ ts = [IM(c(8001:end),:) CL(c(8001:end),:)];
 
 iterVect = 10:10:200;
 
-% RS
+% Random sampling
 
-% disp('SVM with random sampling');
-% [tstErrRS, predictionsRS, modelParamsRS] = ...
-%     AL('RS', tr, cand, ts, iterVect, num_of_classes);
-
+disp('SVM with random sampling');
 
 options.model = 'SVM';
-options.uncertainty = 'random';
+options.uncertainty = 'Random';
+options.diversity = 'None';
 options.iterVect = iterVect;
 
-[accCurve, predictions, criterion, sampList, modelParameters] = ...
-             ALcore(tr, cand, ts, num_of_classes, options);
-
-return
+name = sprintf('%s_%s_%s', options.model, options.uncertainty, options.diversity);
+[accCurve.(name) predictions.(name), criterion.(name), sampList.(name), modelParameters.(name)] = ...
+             AL(tr, cand, ts, num_of_classes, options);
 
 % AL
 disp('SVM with margin sampling active learning');
-[tstErrAL, predictionsAL, modelParamsAL] = ...
-    AL('MS', tr, cand, ts, iterVect, num_of_classes);
+
+options.model = 'SVM';
+options.uncertainty = 'MS';
+options.diversity = 'None';
+options.iterVect = iterVect;
+
+name = sprintf('%s_%s_%s', options.model, options.uncertainty, options.diversity);
+[accCurve.(name) predictions.(name), criterion.(name), sampList.(name), modelParameters.(name)] = ...
+             AL(tr, cand, ts, num_of_classes, options);
 
 figure
-plot(length(tr)+iterVect,tstErrRS(:,1),'r-');
+plot(length(tr)+iterVect,accCurve.SVM_Random_None(:,1),'r-');
 hold on
-plot(length(tr)+iterVect,tstErrAL(:,1),'b-');
+plot(length(tr)+iterVect,accCurve.SVM_MS_None(:,1),'b-');
 grid on
 legend('RS','MS')
 xlabel('Samples in training set')

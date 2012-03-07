@@ -26,18 +26,18 @@ cand   = 2:size(s_pts,1);
 
 switch options.kern
 
-    case 'rbf'
+    case {'lin','rbf'}
         K = kernelmatrix(options.kern, s_pts(:,1:end-2)', s_pts(:,1:end-2)', options.sigma);
 
     otherwise
-        error('Only RBF kernel is supported right now')
-        % FIXME: we need another option to pass the parameter for each kernel
-        K = kernelmatrix(options.kern, s_pts(:,1:end-2)', s_pts(:,1:end-2)', options.sigma);
-        % For non RBF kernels we need to compute sqrt (  K(i,i) * K(j,j) )
-        Kij = diag(K);
-        Kij = sqrt(Kij' * Kij);
-        % Final kernel
-        K = K./Kij;
+        error(['Unsupported kernel type ' options.kern])
+        %%% FIXME: we need another option to pass the parameter for each kernel
+        %K = kernelmatrix(options.kern, s_pts(:,1:end-2)', s_pts(:,1:end-2)', options.sigma);
+        %%% For non RBF kernels we need to compute sqrt (  K(i,i) * K(j,j) )
+        %Kij = diag(K);
+        %Kij = sqrt(Kij' * Kij);
+        %%% Final kernel
+        %K = K./Kij;
 end
 
 for i = 1:pts2add-1

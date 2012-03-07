@@ -1,14 +1,14 @@
-function [labels distances] = ALpredict(method, trnSet, valSet, modelname, rundir)
+function [labels distances] = ALpredict(model, trnSet, valSet, modelname, rundir)
 
-% function [labels distances] = ALpredict(method, trnSet, valSet, modelname, rundir)
+% function [labels distances] = ALpredict(model, trnSet, valSet, modelname, rundir)
 %
 % Returns LDA / SVM predictions
 %
-%  method: method used in predictions (see AL)
-%  trnSet: training set (needed for LDA_*)
-%  valSet: validation set
+%  model:     model used in predictions (see AL)
+%  trnSet:    training set (needed for LDA_*)
+%  valSet:    validation set
 %  modelname: SVM model to use
-%  rundir: this where 'multisvm' should be run
+%  rundir:    this where 'multisvm' should be run
 %
 %  labels: predictions
 %  distances: for SVM, the distances resulting of the one-against-all multiclass strategy
@@ -29,7 +29,7 @@ for be = 1:blocksize:size(valSet,1)
     % Indices
     idx = be:min(be+blocksize-1, size(valSet,1));
     % Predictions
-    if strcmpi(method, 'EQB_LDA')
+    if strcmpi(model, 'LDA')
         labels(idx,:) = classify(valSet(idx,1:end-1),trnSet(:,1:end-1),trnSet(:,end));
     else
         % Test set

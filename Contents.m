@@ -1,5 +1,5 @@
 % Toolbox Active Learning for Remote Sensing Toolbox
-% Version 0.3 05-03-2012
+% Version 0.4 07-03-2012
 % Authors Devis Tuia & Jordi Mu{\~n}oz-Mar{\'i}, (c) 2007-2012
 % License GPLv2
 %
