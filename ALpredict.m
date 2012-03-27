@@ -1,4 +1,4 @@
-function [labels distances] = ALpredict(model, trnSet, valSet, modelname, rundir)
+function [labels distances] = ALpredict(model, trnSet, valSet, modelname, num_of_classes, rundir)
 
 % function [labels distances] = ALpredict(model, trnSet, valSet, modelname, rundir)
 %
@@ -8,6 +8,7 @@ function [labels distances] = ALpredict(model, trnSet, valSet, modelname, rundir
 %  trnSet:    training set (needed for LDA_*)
 %  valSet:    validation set
 %  modelname: SVM model to use
+%  num_of_classes: number of classes the model was trained
 %  rundir:    this where 'multisvm' should be run
 %
 %  labels: predictions
@@ -22,8 +23,10 @@ cmdval = sprintf('./multisvm --val %s %s/tst.txt -dir %s', modelname, rundir, ru
 
 labels = zeros(size(valSet,1),1);
 
-classes = unique(valSet(:,end));
-distances = zeros(size(valSet,1),length(classes));
+% classes = unique(valSet(:,end)); % can fail, maybe using unique(trnSet(:,end))
+% distances = zeros(size(valSet,1),length(classes));
+% For now, use provided num_of_classes
+distances = zeros(size(valSet,1), num_of_classes);
 
 for be = 1:blocksize:size(valSet,1)
     % Indices

@@ -17,8 +17,7 @@ y = trainInput(:,s2);
 fprintf('  Adjusting SVM parameters ...')
 
 iter = 1;
-% tab = zeros(size(unique(sigma),1)*size(unique(cost),1),N);
-tab = zeros(1,N);
+tab = zeros(length(sigma)*length(cost),3);
 cmdval = sprintf('./multisvm --val %s/model_GS %s/valSet.txt -dir %s', rundir, rundir, rundir);
 for c = cost
     for s = sigma

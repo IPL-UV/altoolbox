@@ -22,11 +22,14 @@ function [accCurve, predictions, criterion, sampList, modelParameters] = ...
 %                          - 1: with normalization [Copa et al, SPIE, 2010]
 %            .viewsVector: for Multiview, ex: [1 1 1 2 2 3] = 3 views with corresponding
 %                          variables
+%            .paramSearchIters: iterations where SVM hyperparameters must be adjusted.
+%                               This is done using a grid search strategy, so it is slow
+%                               and computationally demanding.
 %   - Notes:
 %     - MS and MCLU work only if 'SVM' chosen as classifier. If chosing 'LDA', we can use
 %       posterior probabilities instead of decision functions to 'simulate' the criteria,
 %       but it is a good idea to mix everything
-%     - Default options are: {'MS', 'None', 10, 'SVM', 0.6, 4, 1, [1 1 1 2 2 3]}
+%     - Default options are: {'MS', 'None', 10, 'SVM', 0.6, 4, 1, [1 1 1 2 2 3], [1 10]}
 %
 % Outputs:
 % 
@@ -69,6 +72,9 @@ end
 if ~isfield(options, 'viewsVector')
     options.viewsVector = [1 1 1 2 2 3];
 end
+if ~isfield(options, 'paramSearchIters')
+    options.paramSearchIters = [1 10];
+end
 
 rundir = sprintf('./run_%s_%s', options.model, options.uncertainty);
 modelname = '';
@@ -109,18 +115,23 @@ end
 % Results
 accCurve = zeros(numel(options.iterVect),2);
 predictions = zeros(size(tstSet,1), numel(options.iterVect));
-criterion = cell(numel(options.iterVect)-1,1);
 
-% Reserve memory
-diffVect = diff(options.iterVect);
-sampList = zeros(1,sum(diffVect));
-
-% Vector with the indexes to fill sampList (this allows to fill it without using
-% sampList = [sampList ; <whatever>] 
-% idxVect  = [1 cumsumdiffVect];
-
-% Another way is to mantain an index of the vector current size
-sampSize = 0;
+% Samples to add at each iteration
+if length(options.iterVect) == 1
+    criterion = cell(1);
+    diffVect = options.iterVect;
+else
+    criterion = cell(numel(options.iterVect)-1,1);
+    diffVect = diff(options.iterVect);
+    
+    % Reserve memory for sampList
+    sampList = zeros(1,sum(diffVect));
+    % Vector with the indexes to fill sampList (this allows to fill it without using
+    % sampList = [sampList ; <whatever>] 
+    % idxVect  = [1 cumsumdiffVect];
+    % Another way is to mantain an index of the vector current size
+    sampSize = 0;
+end
 
 % -----------------------------------------------------------------------------
 % Main loop: iterVect contains the number of samples to add at each iteration
@@ -130,8 +141,9 @@ for ptsidx = 1:length(options.iterVect)
     if strcmpi(options.model,'LDA')
         modelname = '';
     else
-        % Repeats grid search at iterations 1, 10
-        if  ptsidx == 1 || ptsidx == 10
+        % Search modelParameters when one of them is empty or when ptsidx is in paramSearchIters
+        if ( isempty(modelParameters.stdzFin) || isempty(modelParameters.costFin) ) || ...
+                ( ~isempty(find(ptsidx == options.paramSearchIters,1)) )
            modelParameters = GridSearch_Train_CV(trnSet,num_of_classes,sigmas,Cs,nfolds,rundir);
         end
         % Training
@@ -141,8 +153,9 @@ for ptsidx = 1:length(options.iterVect)
     % Predictions on test set
     %disp('  Testing ...')
     
-    % Predict in blocks to handle deal with test sets
-    predictions(:,ptsidx) = ALpredict(options.model, trnSet, tstSet, modelname, rundir);
+    % Predict in blocks to deal with large test sets
+    predictions(:,ptsidx) = ...
+        ALpredict(options.model, trnSet, tstSet, modelname, num_of_classes, rundir);
     
     % Classes in current training set
     classes = unique(trnSet(:,end));
@@ -154,8 +167,8 @@ for ptsidx = 1:length(options.iterVect)
     fprintf('    trSize = %4i, num. classes = %2i, OA = %5.2f %%\n', ...
                     size(trnSet,1), length(classes), res.OA);
     
-    % Stop in last iteration
-    if ptsidx == length(options.iterVect)
+    % Stop in last iteration (except the special case when only one iteration is requested)
+    if length(options.iterVect) ~= 1 && ptsidx == length(options.iterVect)
         break
     end
     
@@ -183,13 +196,15 @@ for ptsidx = 1:length(options.iterVect)
             end
             
             % Prediction
-            predMatrix(:,i) = ALpredict(options.model, shuffledTrnSet, cndSet, modelname, rundir);
+            predMatrix(:,i) = ...
+                ALpredict(options.model, shuffledTrnSet, cndSet, modelname, num_of_classes, rundir);
         end
         fprintf('\n')
             
     elseif ~strcmpi(options.uncertainty, 'random')
         % Predictions on cndSet
-        [labels distances] = ALpredict(options.model, trnSet, cndSet, modelname, rundir);
+        [labels distances] = ...
+            ALpredict(options.model, trnSet, cndSet, modelname, num_of_classes, rundir);
     end
     
     
@@ -271,15 +286,20 @@ for ptsidx = 1:length(options.iterVect)
         ptsList = [yes ; setdiff(ptsList,yes)];
     end
     
-    % Add selected points from ptsList to trnSet and remove them from cndSet
-    ptsNoList = ptsList((samp2add+1):end);
-    ptsList   = ptsList(1:samp2add);
-    trnSet    = [trnSet ; cndSet(ptsList,:)];
-    cndSet    = cndSet(ptsNoList,:);
-    
-    %sampList = [sampList ; ptsList];
-    %sampList(idxVect(ptsidx)+1:idxVect(ptsidx+1)) = ptsList;
-    sampList(sampSize+1:sampSize+length(ptsList)) = ptsList;
-    sampSize = sampSize + length(ptsList);
+    if length(options.iterVect) == 1
+        % When called to run only one iteration
+        sampList = ptsList;
+    else
+        % Add selected points from ptsList to trnSet and remove them from cndSet
+        ptsNoList = ptsList((samp2add+1):end);
+        ptsList   = ptsList(1:samp2add);
+        trnSet    = [trnSet ; cndSet(ptsList,:)];
+        cndSet    = cndSet(ptsNoList,:);
+
+        %sampList = [sampList ; ptsList];
+        %sampList(idxVect(ptsidx)+1:idxVect(ptsidx+1)) = ptsList;
+        sampList(sampSize+1:sampSize+length(ptsList)) = ptsList;
+        sampSize = sampSize + length(ptsList);
+    end
     
 end
