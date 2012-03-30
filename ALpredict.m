@@ -19,7 +19,8 @@ function [labels distances] = ALpredict(model, trnSet, valSet, modelname, num_of
 % Blocksize for predictions
 blocksize = 1e4;
 
-cmdval = sprintf('./multisvm --val %s %s/tst.txt -dir %s', modelname, rundir, rundir);
+cmdval = sprintf('multisvm --val %s %s/tst.txt -dir %s', modelname, rundir, rundir);
+if ~ispc, cmdval = ['./' cmdval]; end
 
 labels = zeros(size(valSet,1),1);
 

@@ -16,8 +16,9 @@ dlmwrite([rundir '/TrnSetShuffled.txt'], enteteSTrnSet, 'delimiter', ' ', 'preci
 dlmwrite([rundir '/TrnSetShuffled.txt'], trnSet, 'delimiter', ' ', '-append');
 
 % Entranement
-cmdtrn = sprintf('./multisvm %s/TrnSetShuffled.txt %s %d -c %f -std %f -dir %s', ...
+cmdtrn = sprintf('multisvm %s/TrnSetShuffled.txt %s %d -c %f -std %f -dir %s', ...
     rundir, modelname, num_of_classes, modelParameters.costFin, modelParameters.stdzFin * sqrt(2), rundir);
+if ~ispc, cmdtrn = ['./' cmdtrn]; end
 
 [status,result] = system(cmdtrn);
 if status ~= 0
