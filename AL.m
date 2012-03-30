@@ -133,6 +133,30 @@ else
     sampSize = 0;
 end
 
+
+% multisvm needs classes starting from 0 without 'gaps' between them
+% We build a translation table between the original classes and new classes satisfying
+% this condition
+
+% Save original labels
+trnLabels = trnSet(:,end);
+cndLabels = cndSet(:,end);
+tstLabels = tstSet(:,end);
+% 1. Detect classes on original training set
+trTable = unique(trnLabels);
+% 2. Add classes on candidates set not present on the original training set
+trTable = [trTable setdiff(trTable, cndLabels)];
+% 3. The same for classes on test set
+trTable = [trTable setdiff(trTable, tstLabels)];
+% 4. Apply trTable
+for i = 1:length(trTable)
+    trnSet(trnLabels == trTable(i),end) = i-1;
+    cndSet(cndLabels == trTable(i),end) = i-1;
+    tstSet(tstLabels == trTable(i),end) = i-1;
+end
+clear trnLabels cndLabels tstLabels
+
+
 % -----------------------------------------------------------------------------
 % Main loop: iterVect contains the number of samples to add at each iteration
 for ptsidx = 1:length(options.iterVect)
