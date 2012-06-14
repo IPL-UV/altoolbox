@@ -288,8 +288,12 @@ for ptsidx = 1:length(options.iterVect)
                 entropy = entropy ./ CTcount;
             end
             
-            [val ptsList] = sort(-entropy);
-            criterion{ptsidx} = -entropy;
+            %[val ptsList] = sort(-entropy);
+            %criterion{ptsidx} = -entropy;
+            
+            c = randperm(length(entropy))';
+            [val ptsList] = sortrows([-entropy c],[1,2]);
+            criterion = -entropy;
     end
     
     % Samples to add to training set
@@ -298,6 +302,7 @@ for ptsidx = 1:length(options.iterVect)
     % ABD diversity criterion
     if strcmpi(options.diversity,'ABD')
         ABDcand = ptsList(1:min(samp2add*100,end));
+        crit = criterion{ptsidx,1}(ptsList(1:min(samp2add*100,end)));
         if strcmpi(options.model, 'LDA')
             ABDopts.kern = 'lin';
             ABDopts.sigma = 0;
@@ -305,9 +310,9 @@ for ptsidx = 1:length(options.iterVect)
             ABDopts.kern = 'rbf';
             ABDopts.sigma = modelParameters.stdzFin;
         end
-        yes = ABD_criterion([cndSet(ABDcand,:) ABDcand], samp2add*10 , ABDopts);
+        yes = ABD_criterion([cndSet(ABDcand,:) ABDcand],crit, samp2add*10 , ABDopts);
         % Re-create ptsList using 'yes'
-        ptsList = [yes ; setdiff(ptsList,yes)];
+        ptsList = [yes(:,end) ; setdiff(ptsList,yes(:,end))];
     end
     
     if length(options.iterVect) == 1
