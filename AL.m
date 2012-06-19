@@ -12,8 +12,17 @@ function [accCurve, predictions, criterion, sampList, modelParameters] = ...
 %   - num_of_classes: number of classes
 %   - tstSet:         test set (ntest x dim + class)
 %   - options:
-%            .uncertainty: 'Random', 'EQB', 'MS', 'MCLU', 'Multiview'
-%            .diversity:   'None', 'ABD', 'Manifold'
+%            .uncertainty:  'Random', 
+%                           'EQB', (Tuia et al., Active learning methods for remote sensing image classification. IEEE TGRS, 2009)
+%                           'MS', 
+%                           'MCLU', (Demir et al., Batch mode active learning methods for the interactive classification of remote sensing images IEEE TGRS, 2011)
+%                           'Multiview' (Di and Crawford, View Generation for Multiview Maximum Disagreement Based Active Learning for Hyperspectral Image Classification IEEE TGRS, 2012)
+%
+%            .diversity:    'None', 
+%                           'ABD', (Demir et al., Batch mode active learning methods for the interactive classification of remote sensing images IEEE TGRS, 2011)
+%                           'cSV', (Tuia et al., Active learning methods for remote sensing image classification. IEEE TGRS, 2009) 
+%                           'Manifold' (Di and Crawford, Active Learning via Multi-view and Local Proximity Co-regularization for Hyperspectral Image Classification IEEE JSTSP, 2011)
+%
 %            .iterVector:  vector containing number of samples to add at each iteration
 %            .model:       base classifier, 'LDA', 'SVM'
 %            .pct:         for EQB, percentage of trainig pixels to make sub-trainig sets
@@ -28,7 +37,8 @@ function [accCurve, predictions, criterion, sampList, modelParameters] = ...
 %   - Notes:
 %     - MS and MCLU work only if 'SVM' chosen as classifier. If chosing 'LDA', we can use
 %       posterior probabilities instead of decision functions to 'simulate' the criteria,
-%       but it is a good idea to mix everything
+%       but it is at your own risk (ex: MCLU with posterior probabilities
+%       corresponds to the Breaing ties criterion in Luo et al. JMLR 2005)
 %     - Default options are: {'MS', 'None', 10, 'SVM', 0.6, 4, 1, [1 1 1 2 2 3], [1 10]}
 %
 % Outputs:
@@ -40,7 +50,13 @@ function [accCurve, predictions, criterion, sampList, modelParameters] = ...
 %   - sampList:        list of selected samples among the candidates
 %   - modelParameters: RBF Gaussian kernel sigma and const C if using SVM
 % 	
-% by Devis Tuia, JoRdI (2007-12)
+% by DevIs, JoRdI (2007-12)
+%
+% If using the toolbox, please cite:
+%
+% D. Tuia, M. Volpi, L. Copa, M. Kanevski, and J. Mu?oz-Mar?. 
+% A survey of active learning algorithms for supervised remote sensing image classification. 
+% IEEE J. Sel. Topics Signal Proc., 5(3):606?617, 2011.
 %
 % See also ALToolbox
 
@@ -90,7 +106,7 @@ switch options.model
         modelname = sprintf('%s/modelTestBoot_Schohn', rundir);    
         % SVM training parameters
         nfolds = 3;
-        sigmas = logspace(-2,1,5);
+        sigmas = logspace(-4,1,5);
         Cs = logspace(0,2,5);
     otherwise
         error(['Unknown or unimplemented base model: ' options.model])
@@ -251,28 +267,7 @@ for ptsidx = 1:length(options.iterVect)
             [val ptsList] = sortrows(yy);
             criterion{ptsidx} = yy;
             
-        case 'MMD' % Minimal mean distances between [-1,+1]
-            yy = zeros(size(distances,1), 1);
-            distances = abs(distances);
-            for dd = 1:size(distances,1)
-                yy(dd) = mean(distances( distances(dd,:) < 1 ));
-            end
-            [val ptsList] = sortrows(yy);
-            criterion{ptsidx} = yy;
-            
-        case 'MCLU_OPC' % MCLU selecting exactly one from each class (OPC)
-            distances = sort(distances,2);
-            % Ordered list of differences between maximum distances with predicted label
-            xx = [labels sortrows(distances(:,end) - distances(:,end-1))];
-            % Select one for each class
-            ptsList = 1:size(xx,1);
-            for i = 1:numel(classes)
-                % Find first element of i-th class
-                ptsList(i) = find(xx(:,1) == classes(i), 1);
-            end
-            % Fill the rest of ptsList with the numbers not already in ptsList
-            ptsList((numel(classes)+1):end) = setdiff(1:length(ptsList), ptsList(1:numel(classes)));
-            criterion{ptsidx} = distances(:,end) - distances(:,end-1);
+       
             
         case 'EQB'
             %fprintf('  estimating entropies ...\n')
@@ -294,26 +289,41 @@ for ptsidx = 1:length(options.iterVect)
             c = randperm(length(entropy))';
             [val ptsList] = sortrows([-entropy c],[1,2]);
             criterion = -entropy;
+            
+        case 'MULTIVIEW'
+            disp('Not implemented yet.')
+            return
     end
     
     % Samples to add to training set
     samp2add = diffVect(ptsidx); % options.iterVect(ptsidx+1) - options.iterVect(ptsidx);
     
-    % ABD diversity criterion
-    if strcmpi(options.diversity,'ABD')
-        ABDcand = ptsList(1:min(samp2add*100,end));
-        crit = criterion{ptsidx,1}(ptsList(1:min(samp2add*100,end)));
-        if strcmpi(options.model, 'LDA')
-            ABDopts.kern = 'lin';
-            ABDopts.sigma = 0;
-        else
-            ABDopts.kern = 'rbf';
-            ABDopts.sigma = modelParameters.stdzFin;
-        end
-        yes = ABD_criterion([cndSet(ABDcand,:) ABDcand],crit, samp2add*10 , ABDopts);
-        % Re-create ptsList using 'yes'
-        ptsList = [yes(:,end) ; setdiff(ptsList,yes(:,end))];
+    
+    switch upper(options.diversity)
+        % ABD diversity criterion
+        case 'ABD'
+            ABDcand = ptsList(1:min(samp2add*100,end));
+            crit = criterion{ptsidx,1}(ptsList(1:min(samp2add*100,end)));
+            if strcmpi(options.model, 'LDA')
+                ABDopts.kern = 'lin';
+                ABDopts.sigma = 0;
+            else
+                ABDopts.kern = 'rbf';
+                ABDopts.sigma = modelParameters.stdzFin/2;
+            end
+            yes = ABD_criterion([cndSet(ABDcand,:) ABDcand],crit, samp2add*10 , ABDopts);
+            % Re-create ptsList using 'yes'
+            ptsList = [yes(:,end) ; setdiff(ptsList,yes(:,end))];
+            
+        case 'CSV'
+            disp('Not implemented yet.')
+            return
+            
+        case 'MANIFOLD'
+            disp('Not implemented yet.')
+            return
     end
+
     
     if length(options.iterVect) == 1
         % When called to run only one iteration
