@@ -309,7 +309,7 @@ for ptsidx = 1:length(options.iterVect)
                 ABDopts.sigma = 0;
             else
                 ABDopts.kern = 'rbf';
-                ABDopts.sigma = modelParameters.stdzFin/2;
+                ABDopts.sigma = modelParameters.stdzFin;
             end
             yes = ABD_criterion([cndSet(ABDcand,:) ABDcand],crit, samp2add*10 , ABDopts);
             % Re-create ptsList using 'yes'

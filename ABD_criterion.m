@@ -1,4 +1,4 @@
-function [batch,cand] = ABD_criterion(s_pts, pts2add, options)
+function [batch,cand] = ABD_criterion(s_pts,crit, pts2add, options)
 
 % function [batch,cand] = ABD_criterion(s_pts, pts2add, options)
 %
@@ -10,6 +10,7 @@ function [batch,cand] = ABD_criterion(s_pts, pts2add, options)
 %             columns are the class label (not used here in any way) and the
 %             index of the whole pool of samples of each provided sample,
 %             respectively
+%    crit:    vector with the diversity criterion (MS, MCLU, EQB, ....)
 %    pts2add: number of points to select from the candidates in s_pts
 %    options: .kern: kernel type, .sigma: kernel free parameter
 %
@@ -44,12 +45,12 @@ for i = 1:pts2add-1
 
     val = K(batch,cand);
     if size(val,1) == 1
-        massimo = max(val,1);
+        massimo = val;%max(val,1);
     else
         massimo = max(val);
     end
 
-    heuristic = lambda * s_pts(cand,end)' + (1-lambda) * massimo;
+    heuristic = lambda * crit(cand)' + (1-lambda) * massimo;
     [val idx] = sort(heuristic);
 
     % Add to batch
