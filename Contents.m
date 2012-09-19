@@ -19,3 +19,4 @@
 % D. Tuia, M. Volpi, L. Copa, M. Kanevski, and J. Mu{\~n}oz-Mar{\'i}.
 % A survey of active learning algorithms for supervised remote sensing image classification. 
 % IEEE Journal of Selected Topics in Signal Processing, 5(3):606?617, 2011.
+

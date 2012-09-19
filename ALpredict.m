@@ -52,3 +52,4 @@ for be = 1:blocksize:size(valSet,1)
         distances(idx,:) = preds(:,2:end);
     end
 end
+

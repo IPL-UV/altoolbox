@@ -5,7 +5,7 @@ function [modelParameters tab] = GridSearch_Train_CV(trainInput,ncl,sigma,cost,N
 % Crossvalidation error for SVM parameters selection
 % by Michele VOlpi, University of Lausanne, 2010.
 %
-% See also ALToolbox
+% See also ALtoolbox
 
 [s1,s2] = size(trainInput);
 shake = randperm(s1)';
@@ -18,12 +18,14 @@ fprintf('  Adjusting SVM parameters ...')
 
 iter = 1;
 tab = zeros(length(sigma)*length(cost),3);
-cmdval = sprintf('./multisvm --val %s/model_GS %s/valSet.txt -dir %s', rundir, rundir, rundir);
+cmdval = sprintf('multisvm --val %s/model_GS %s/valSet.txt -dir %s', rundir, rundir, rundir);
+if ~ispc, cmdval = ['./' cmdval]; end
 for c = cost
     for s = sigma
         tabCV = zeros(N,1);
-        cmdtrn = sprintf('./multisvm %s/trnSet_init.txt %s/model_GS %i -c %i -std %f -dir %s', ...
+        cmdtrn = sprintf('multisvm %s/trnSet_init.txt %s/model_GS %i -c %i -std %f -dir %s', ...
                     rundir, rundir, ncl, c, s*sqrt(2), rundir);
+        if ~ispc, cmdtrn = ['./' cmdtrn]; end
         for k = 1:N
             [xapp,yapp,xtest,ytest] = n_fold(x,y,N,k);
 
@@ -72,3 +74,4 @@ fprintf('  %5.2f %5.2f %5.2f\n', bst)
 
 modelParameters.stdzFin = tab(a(size(a,1)),1);
 modelParameters.costFin = tab(a(size(a,1)),2);
+

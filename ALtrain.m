@@ -25,3 +25,4 @@ if status ~= 0
     disp(result)
     error('ALToolbox:AL:multisvm','Error running multisvm')
 end
+
