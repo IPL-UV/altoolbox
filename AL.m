@@ -38,7 +38,7 @@ function [accCurve, predictions, criterion, sampList, modelParameters] = ...
 %     - MS and MCLU work only if 'SVM' chosen as classifier. If chosing 'LDA', we can use
 %       posterior probabilities instead of decision functions to 'simulate' the criteria,
 %       but it is at your own risk (ex: MCLU with posterior probabilities
-%       corresponds to the Breaing ties criterion in Luo et al. JMLR 2005)
+%       corresponds to the Breaking ties criterion in Luo et al. JMLR 2005)
 %     - Default options are: {'MS', 'None', 10, 'SVM', 0.6, 4, 1, [1 1 1 2 2 3], [1 10]}
 %
 % Outputs:
@@ -50,11 +50,11 @@ function [accCurve, predictions, criterion, sampList, modelParameters] = ...
 %   - sampList:        list of selected samples among the candidates
 %   - modelParameters: RBF Gaussian kernel sigma and const C if using SVM
 % 	
-% by DevIs, JoRdI (2007-12)
+% by Devis Tuia, Jordi Mu\~noz-Mar\i', Hsiuhan Lexie Yang (2007-12)
 %
 % If using the toolbox, please cite:
 %
-% D. Tuia, M. Volpi, L. Copa, M. Kanevski, and J. Mu?oz-Mar?. 
+% D. Tuia, M. Volpi, L. Copa, M. Kanevski, and J. Mu\~noz-Mar\'i. 
 % A survey of active learning algorithms for supervised remote sensing image classification. 
 % IEEE J. Sel. Topics Signal Proc., 5(3):606?617, 2011.
 %
@@ -94,8 +94,10 @@ end
 
 rundir = sprintf('./run_%s_%s', options.model, options.uncertainty);
 modelname = '';
-modelParameters.stdzFin = 0;
-modelParameters.costFin = 0;
+if ~isfield(options, 'modelParameters')
+    options.modelParameters.stdzFin = [];
+    options.modelParameters.costFin = [];
+end
 
 switch options.model
     case 'LDA'
@@ -106,15 +108,16 @@ switch options.model
         modelname = sprintf('%s/modelTestBoot_Schohn', rundir);    
         % SVM training parameters
         nfolds = 3;
-        sigmas = logspace(-4,1,5);
+        sigmas = logspace(-2,1,5);
         Cs = logspace(0,2,5);
     otherwise
         error(['Unknown or unimplemented base model: ' options.model])
 end
 
 switch upper(options.uncertainty)
-    case {'RANDOM', 'EQB'} %, 'MULTIVIEW'} not yet implemented
-    case {'MS', 'MCLU'}
+    case {'RANDOM', 'EQB'} 
+         
+    case {'MS', 'MCLU', 'MULTIVIEW'}
         if strcmpi(options.model, 'LDA')
             error([options.uncertainty ' uncertainty does not work with ' options.model])
         end
@@ -182,17 +185,17 @@ for ptsidx = 1:length(options.iterVect)
         modelname = '';
     else
         % Search modelParameters when one of them is empty or when ptsidx is in paramSearchIters
-        if ( isempty(modelParameters.stdzFin) || isempty(modelParameters.costFin) ) || ...
+        if ( isempty(options.modelParameters.stdzFin) || isempty(options.modelParameters.costFin) ) || ...
                 ( ~isempty(find(ptsidx == options.paramSearchIters,1)) )
-           modelParameters = GridSearch_Train_CV(trnSet,num_of_classes,sigmas,Cs,nfolds,rundir);
+            options.modelParameters = GridSearch_Train_CV(trnSet, num_of_classes, sigmas, Cs, nfolds, rundir);
         end
         % Training
-        ALtrain(trnSet, modelParameters, num_of_classes, modelname, rundir);
+        ALtrain(trnSet, options.modelParameters, num_of_classes, modelname, rundir);
     end
     
     % Predictions on test set
     %disp('  Testing ...')
-    
+     
     % Predict in blocks to deal with large test sets
     predictions(:,ptsidx) = ...
         ALpredict(options.model, trnSet, tstSet, modelname, num_of_classes, rundir);
@@ -232,7 +235,7 @@ for ptsidx = 1:length(options.iterVect)
             
             % SVM training of i-th SVM
             if strcmpi(options.model,'SVM')
-                ALtrain(shuffledTrnSet, modelParameters, num_of_classes, modelname, rundir);
+                ALtrain(shuffledTrnSet, options.modelParameters, num_of_classes, modelname, rundir);
             end
             
             % Prediction
@@ -259,15 +262,13 @@ for ptsidx = 1:length(options.iterVect)
         case 'MS' % Margin sampling
             yy = min(abs(distances),[],2);
             [val ptsList] = sortrows(yy);
-            criterion{ptsidx} = yy;
+            criterion{ptsidx} = yy;         
             
         case 'MCLU' % Multiclass Level Uncertanty
             distances = sort(distances,2);
             yy = distances(:,end) - distances(:,end-1);
             [val ptsList] = sortrows(yy);
             criterion{ptsidx} = yy;
-            
-       
             
         case 'EQB'
             %fprintf('  estimating entropies ...\n')
@@ -282,7 +283,7 @@ for ptsidx = 1:length(options.iterVect)
                 CTcount(CTcount == 0) = 1; % avoid divisons by zero
                 entropy = entropy ./ CTcount;
             end
-            
+                        
             %[val ptsList] = sort(-entropy);
             %criterion{ptsidx} = -entropy;
             
@@ -290,15 +291,22 @@ for ptsidx = 1:length(options.iterVect)
             [val ptsList] = sortrows([-entropy c],[1,2]);
             criterion = -entropy;
             
+        % Lexie: MV implementation
         case 'MULTIVIEW'
-            disp('Not implemented yet.')
-            return
+            sample2add = diffVect(ptsidx); % batch size
+            svmDir = './MV_SVMs';
+            if ~exist(svmDir, 'dir')
+                mkdir(svmDir)
+            end
+            %fprintf('  Current step: %d\n', ptsidx)
+            selected_points_index = amdMV(trnSet, cndSet, num_of_classes, options.viewsVector, ...
+                                            sample2add, svmDir, nfolds, sigmas, Cs);
+    
     end
     
     % Samples to add to training set
     samp2add = diffVect(ptsidx); % options.iterVect(ptsidx+1) - options.iterVect(ptsidx);
-    
-    
+         
     switch upper(options.diversity)
         % ABD diversity criterion
         case 'ABD'
@@ -309,9 +317,9 @@ for ptsidx = 1:length(options.iterVect)
                 ABDopts.sigma = 0;
             else
                 ABDopts.kern = 'rbf';
-                ABDopts.sigma = modelParameters.stdzFin;
+                ABDopts.sigma = options.modelParameters.stdzFin;
             end
-            yes = ABD_criterion([cndSet(ABDcand,:) ABDcand],crit, samp2add*10 , ABDopts);
+            yes = ABD_criterion([cndSet(ABDcand,:) ABDcand], crit, samp2add*10 , ABDopts);
             % Re-create ptsList using 'yes'
             ptsList = [yes(:,end) ; setdiff(ptsList,yes(:,end))];
             
@@ -323,18 +331,24 @@ for ptsidx = 1:length(options.iterVect)
             disp('Not implemented yet.')
             return
     end
-
     
     if length(options.iterVect) == 1
         % When called to run only one iteration
-        sampList = ptsList;
-    else
-        % Add selected points from ptsList to trnSet and remove them from cndSet
+        sampList = ptsList;    
+    
+    % Add selected points from ptsList to trnSet and remove them from cndSet
+    elseif strcmpi(options.uncertainty, 'MULTIVIEW')
+        % MultiView part
+        trnSet = [trnSet;cndSet(selected_points_index,:)];
+        cndSet(selected_points_index,:) = [];
+        sampList(sampSize+1:sampSize+length(selected_points_index)) = selected_points_index;
+        sampSize = sampSize + length(selected_points_index);
+    else    
         ptsNoList = ptsList((samp2add+1):end);
         ptsList   = ptsList(1:samp2add);
         trnSet    = [trnSet ; cndSet(ptsList,:)];
         cndSet    = cndSet(ptsNoList,:);
-
+        
         %sampList = [sampList ; ptsList];
         %sampList(idxVect(ptsidx)+1:idxVect(ptsidx+1)) = ptsList;
         sampList(sampSize+1:sampSize+length(ptsList)) = ptsList;
@@ -342,3 +356,5 @@ for ptsidx = 1:length(options.iterVect)
     end
     
 end
+
+modelParameters = options.modelParameters;

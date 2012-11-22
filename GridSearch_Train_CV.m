@@ -1,6 +1,6 @@
-function [modelParameters tab] = GridSearch_Train_CV(trainInput,ncl,sigma,cost,N,rundir)
+function [modelParameters tab] = GridSearch_Train_CV(trainInput, ncl, sigma, cost, N, rundir)
 
-% function [modelParameters tab] = GridSearch_Train_CV(trainInput,ncl,sigma,cost,N,rundir)
+% function [modelParameters tab] = GridSearch_Train_CV(trainInput, ncl, sigma, cost, N, rundir)
 %
 % Crossvalidation error for SVM parameters selection
 % by Michele VOlpi, University of Lausanne, 2010.
@@ -63,15 +63,9 @@ for c = cost
     end
 end
 
-clear iter
-a = find(tab(:,3) == min(tab(:,3)));
-bst = tab(a(size(a,1)),:);
+[vv ii] = min(tab(:,3));
 
-% disp(['Proposed:'])
-% disp(['s1 C error'])
-% disp(bst)
-fprintf('  %5.2f %5.2f %5.2f\n', bst)
+fprintf('  %5.2f %5.2f %5.2f\n', tab(ii,:))
 
-modelParameters.stdzFin = tab(a(size(a,1)),1);
-modelParameters.costFin = tab(a(size(a,1)),2);
-
+modelParameters.stdzFin = tab(ii,1);
+modelParameters.costFin = tab(ii,2);
