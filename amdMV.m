@@ -13,7 +13,7 @@ function selected_points_index = ...
 %       - nfolds, sigmas, Cs: SVM hyperparameters tunning
 % Outputs:
 %       - selected_points_index: selected points to be added to the training
-%                               data per step
+%                                data per step
 %
 % - by Hsiuhan Lexie Yang (2012.10)
 %   We also thank Wei Di who contributes to the code skeleton.

@@ -145,17 +145,17 @@ else
     
     % Reserve memory for sampList
     sampList = zeros(1,sum(diffVect));
-    % Vector with the indexes to fill sampList (this allows to fill it without using
-    % sampList = [sampList ; <whatever>] 
-    % idxVect  = [1 cumsumdiffVect];
-    % Another way is to mantain an index of the vector current size
     sampSize = 0;
+    % This two allows us to fill sampList without using
+    %   sampList = [sampList ; ... ]
 end
 
+% The remaining points from the candidates set
+remPtsList = 1:size(cndSet,1);
 
-% multisvm needs classes starting from 0 without 'gaps' between them
+% multisvm needs classes starting from 0 without 'gaps' between them.
 % We build a translation table between the original classes and new classes satisfying
-% this condition
+% this condition.
 
 % Save original labels
 trnLabels = trnSet(:,end);
@@ -253,6 +253,9 @@ for ptsidx = 1:length(options.iterVect)
     
     % 2. Use one the following AL methods to rank the predictions
     
+    % Samples to add to training set
+    samp2add = diffVect(ptsidx); % options.iterVect(ptsidx+1) - options.iterVect(ptsidx);
+    
     switch upper(options.uncertainty)
         
         case 'RANDOM' % Random sampling
@@ -293,20 +296,17 @@ for ptsidx = 1:length(options.iterVect)
             
         % Lexie: MV implementation
         case 'MULTIVIEW'
-            sample2add = diffVect(ptsidx); % batch size
             svmDir = './MV_SVMs';
             if ~exist(svmDir, 'dir')
                 mkdir(svmDir)
             end
             %fprintf('  Current step: %d\n', ptsidx)
-            selected_points_index = amdMV(trnSet, cndSet, num_of_classes, options.viewsVector, ...
-                                            sample2add, svmDir, nfolds, sigmas, Cs);
-    
+            ptsList = amdMV(trnSet, cndSet, num_of_classes, options.viewsVector, ...
+                                            samp2add, svmDir, nfolds, sigmas, Cs);
+            % amdMV can return less samples than requested, fix it!
+            samp2add = length(ptsList);
     end
     
-    % Samples to add to training set
-    samp2add = diffVect(ptsidx); % options.iterVect(ptsidx+1) - options.iterVect(ptsidx);
-         
     switch upper(options.diversity)
         % ABD diversity criterion
         case 'ABD'
@@ -337,24 +337,31 @@ for ptsidx = 1:length(options.iterVect)
         sampList = ptsList;    
     
     % Add selected points from ptsList to trnSet and remove them from cndSet
-    elseif strcmpi(options.uncertainty, 'MULTIVIEW')
-        % MultiView part
-        trnSet = [trnSet;cndSet(selected_points_index,:)];
-        cndSet(selected_points_index,:) = [];
-        sampList(sampSize+1:sampSize+length(selected_points_index)) = selected_points_index;
-        sampSize = sampSize + length(selected_points_index);
-    else    
-        ptsNoList = ptsList((samp2add+1):end);
-        ptsList   = ptsList(1:samp2add);
-        trnSet    = [trnSet ; cndSet(ptsList,:)];
-        cndSet    = cndSet(ptsNoList,:);
+    else
+        % Add selected points to trnSet and remove them from cndSet
+        ptsList = ptsList(1:samp2add);
+        trnSet = [trnSet ; cndSet(ptsList,:)];
+        cndSet(ptsList,:) = [];
         
-        %sampList = [sampList ; ptsList];
-        %sampList(idxVect(ptsidx)+1:idxVect(ptsidx+1)) = ptsList;
-        sampList(sampSize+1:sampSize+length(ptsList)) = ptsList;
-        sampSize = sampSize + length(ptsList);
+        % Build sampList vector: The indexes in ptsList refer to cndSet, but cndSet is
+        % modified, thus doing this is wrong
+        %
+        %    sampList(sampSize+1:sampSize+samp2add) = ptsList;
+        %
+        % The indexes in sampList should refer to the original cndSet. To obtain them we
+        % use an auxiliary vector, remPtsList, which has the indexes of the original
+        % cndSet.
+        
+        % 1. Take the indexes referred to the original cndSet saved in remPtsList.
+        sampList(sampSize+1:sampSize+samp2add) = remPtsList(ptsList);
+        sampSize = sampSize + samp2add;
+        % 2. Remove added points from remPtsList
+        remPtsList(ptsList) = [];
     end
     
 end
+
+% Fix sampList size: For instance, in multiview can be less than expected
+sampList = sampList(1:sampSize);
 
 modelParameters = options.modelParameters;

@@ -1,6 +1,6 @@
 MATLAB Active Learning Toolbox for Remote Sensing.
 
-(c) 20011-12 Devis Tuia & Jordi Muñoz-Marí.
+(c) 20011-13 Devis Tuia & Jordi Muñoz-Marí.
 
 This code is licensed under GNU GPL v2.
 
