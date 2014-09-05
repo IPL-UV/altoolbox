@@ -290,9 +290,10 @@ for ptsidx = 1:length(options.iterVect)
             %[val ptsList] = sort(-entropy);
             %criterion{ptsidx} = -entropy;
             
-            c = randperm(length(entropy))';
-            [val ptsList] = sortrows([-entropy c],[1,2]);
-            criterion = -entropy;
+            % Sort taking (randomly) into account elements with the same entropy
+            c = randperm(length(entropy));
+            [val ptsList] = sortrows([-entropy' c'],[1,2]);
+            criterion{ptsidx} = -entropy';
             
         % Lexie: MV implementation
         case 'MULTIVIEW'
