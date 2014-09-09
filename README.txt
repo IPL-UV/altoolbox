@@ -13,14 +13,17 @@ Torch3 library (it is also a very nice OAA SVM for general purpose).
 
 Quick setup:
 
-  - Download the last release at the downloads page and install it on your
-    computer (http://code.google.com/p/altoolbox/downloads/list).
+  - Download last release and install it on your computer. Latest version is at
+    * https://altoolbox.googlecode.com/archive/ALToolbox_v0.5.2.zip, or
+    * https://github.com/IPL-UV/altoolbox/archive/ALToolbox_v0.5.2.zip
   - Download multisvm_binaries_v2.zip, uncompress it, copy the binary
     corresponding to your platform in the ALTB directory and rename it to
     'multisvm' (or 'multisvm.exe' if you are using Windows).
+    URL: https://altoolbox.googlecode.com/files/multisvm_binaries_v2.zip
   - If you use Windows 64 bits you will also need to download
     mingw64-runtime.zip. Save the contents in the ALTB directory or anywhere in
     your system path.
+    URL: https://altoolbox.googlecode.com/files/mingw64-runtime.zip
   - Run 'demo.m'.
 
 What's next?
