@@ -19,13 +19,15 @@ Quick setup:
   - Download multisvm_binaries_v2.zip, uncompress it, copy the binary
     corresponding to your platform in the ALTB directory and rename it to
     'multisvm' (or 'multisvm.exe' if you are using Windows).
-    URsL:
+    URLs:
+      * https://github.com/IPL-UV/altoolbox/releases/download/ALToolbox_v0.5.2/multisvm_binaries_v2.zip
       * https://altoolbox.googlecode.com/files/multisvm_binaries_v2.zip
       * https://drive.google.com/open?id=0B4LAJuc0lE8ESUhKN0NaenF5Z1U&authuser=0
   - If you use Windows 64 bits you will also need to download
     mingw64-runtime.zip. Save the contents in the ALTB directory or anywhere in
     your system path.
     URLs:
+      * https://github.com/IPL-UV/altoolbox/releases/download/ALToolbox_v0.5.2/mingw64-runtime.zip
       * https://altoolbox.googlecode.com/files/mingw64-runtime.zip
       * https://drive.google.com/open?id=0B4LAJuc0lE8EcUdrdExJalRRckU&authuser=0
   - Run 'demo.m'.
