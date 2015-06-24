@@ -23,9 +23,9 @@ function [accCurve, predictions, criterion, sampList, modelParameters] = ...
 %                           'cSV', (Tuia et al., Active learning methods for remote sensing image classification. IEEE TGRS, 2009) 
 %                           'Manifold' (Di and Crawford, Active Learning via Multi-view and Local Proximity Co-regularization for Hyperspectral Image Classification IEEE JSTSP, 2011)
 %
-%            .iterVector:  vector containing number of samples to add at each iteration
+%            .iterVect:    vector containing number of samples to add at each iteration
 %            .model:       base classifier, 'LDA', 'SVM'
-%            .pct:         for EQB, percentage of trainig pixels to make sub-trainig sets
+%            .pct:         for EQB, percentage of trainig pixels to make sub-training sets
 %            .numModels:   for EQB, number of models to train
 %            .normEQB:     - 0: without normalization [Tuia et al., TGRS, 2009]
 %                          - 1: with normalization [Copa et al, SPIE, 2010]
